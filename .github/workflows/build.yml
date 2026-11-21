@@ -17,11 +17,17 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.7
-      - name: Find project
+      - name: Prepare project
         run: |
-          F=$(find . -name settings.gradle.kts -not -path "*/node_modules/*" | head -1)
-          echo "Found: $F"
-          echo "PROJ=$(dirname "$F")" >> $GITHUB_ENV
+          if [ ! -f settings.gradle.kts ]; then
+            Z=$(find . -maxdepth 2 -name "*.zip" | head -1)
+            echo "Unzipping: $Z"
+            mkdir -p proj && unzip -o "$Z" -d proj
+            echo "PROJ=proj" >> $GITHUB_ENV
+          else
+            echo "PROJ=." >> $GITHUB_ENV
+          fi
+          ls -la "$(grep PROJ $GITHUB_ENV | cut -d= -f2)"
       - name: Build
         run: gradle -p "$PROJ" --no-daemon assembleRelease
       - run: cp "$PROJ/app/build/outputs/apk/release/app-release.apk" ResellfairAdmin.apk
