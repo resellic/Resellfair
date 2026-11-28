@@ -17,19 +17,17 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.7
-      - name: Prepare project
+      - name: Find project
         run: |
-          if [ ! -f settings.gradle.kts ]; then
-            Z=$(find . -maxdepth 2 -name "*.zip" | head -1)
-            echo "Unzipping: $Z"
-            mkdir -p proj && unzip -o "$Z" -d proj
-            echo "PROJ=proj" >> $GITHUB_ENV
+          if [ -f settings.gradle.kts ]; then PROJ=.
           else
-            echo "PROJ=." >> $GITHUB_ENV
+            ZIP=$(ls *.zip 2>/dev/null | head -n 1)
+            [ -n "$ZIP" ] || { echo "No settings.gradle.kts and no zip in the repo"; exit 1; }
+            mkdir proj && unzip -q "$ZIP" -d proj
+            PROJ=$(dirname "$(find proj -name settings.gradle.kts | head -n 1)")
           fi
-          ls -la "$(grep PROJ $GITHUB_ENV | cut -d= -f2)"
-      - name: Build
-        run: gradle -p "$PROJ" --no-daemon assembleRelease
+          echo "PROJ=$PROJ" >> "$GITHUB_ENV"
+      - run: gradle -p "$PROJ" --no-daemon assembleRelease
       - run: cp "$PROJ/app/build/outputs/apk/release/app-release.apk" ResellfairAdmin.apk
       - uses: actions/upload-artifact@v4
         with:
